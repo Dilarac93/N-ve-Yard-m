@@ -1,451 +1,733 @@
 <!DOCTYPE html>
 <html lang="tr">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <title>Nüve Yardım - Afet Koordinasyon</title>
-  <script src="https://cdn.tailwindcss.com"></script>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap');
-    body { font-family: 'Inter', sans-serif; background-color: #0b0f19; }
-    .phone-mockup {
-      width: 100%;
-      max-width: 412px;
-      height: 840px;
-      background: #ffffff;
-      border-radius: 44px;
-      border: 10px solid #1e293b;
-      box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.7);
-      position: relative;
-      display: flex;
-      flex-direction: column;
-      overflow: hidden;
-      margin: 16px auto;
-    }
-    .dynamic-island {
-      width: 110px;
-      height: 24px;
-      background: #000000;
-      border-radius: 20px;
-      position: absolute;
-      top: 8px;
-      left: 50%;
-      transform: translateX(-50%);
-      z-index: 1000;
-    }
-    .screen-tab { display: none; flex: 1; overflow-y: auto; padding-bottom: 70px; }
-    .screen-tab.active { display: block; }
-    .nav-btn.active { color: #dc2626; }
-    #map { height: 100%; width: 100%; }
-    .pulse-dot { animation: pulse 2s infinite; }
-    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.4; } }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>Nüve Yardım — Afet Ayni Bağış Koordinasyonu</title>
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.css">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/MarkerCluster.Default.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@500;600;700&family=Inter:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap" rel="stylesheet">
+<style>
+  :root{
+    --bg:#0B1119; --bg-elev:#131C27; --bg-elev-2:#1B2732; --bg-elev-3:#22303C;
+    --border:rgba(255,255,255,0.09); --border-soft:rgba(255,255,255,0.05);
+    --text:#EDF3F7; --text-dim:#9FB1C1; --text-faint:#5E7285;
+    --blue:#4C8DC7; --green:#49AD7E; --red:#E2564B; --amber:#E5A93D; --teal:#35C4B8;
+    --teal-dim:rgba(53,196,184,0.15); --red-dim:rgba(226,86,75,0.15); --amber-dim:rgba(229,169,61,0.15);
+    --blue-dim:rgba(76,141,199,0.15); --green-dim:rgba(73,173,126,0.15);
+    --shadow:0 20px 60px rgba(0,0,0,0.5); --radius:18px;
+    --font-display:'Space Grotesk',system-ui,sans-serif; --font-body:'Inter',system-ui,sans-serif; --font-mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  html[data-theme="light"]{
+    --bg:#EEF2F5; --bg-elev:#FFFFFF; --bg-elev-2:#F5F8FA; --bg-elev-3:#E9EEF2;
+    --border:rgba(15,23,32,0.10); --border-soft:rgba(15,23,32,0.06);
+    --text:#101820; --text-dim:#4C5D6B; --text-faint:#8298A6;
+    --shadow:0 16px 40px rgba(20,30,40,0.14);
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  body{
+    margin:0; min-height:100vh;
+    background: radial-gradient(circle at 20% 0%, #16202c 0%, transparent 45%), radial-gradient(circle at 85% 100%, #10161f 0%, transparent 50%), var(--bg);
+    display:flex; align-items:center; justify-content:center; font-family:var(--font-body); color:var(--text); padding:18px 0;
+  }
+  html[data-theme="light"] body{ background: radial-gradient(circle at 20% 0%, #dde5ea 0%, transparent 45%), var(--bg); }
+  .phone{
+    width:min(440px,100vw); height:min(918px,100vh); background:var(--bg);
+    border-radius:34px; box-shadow:var(--shadow); border:1px solid var(--border);
+    display:flex; flex-direction:column; overflow:hidden; position:relative;
+  }
+  .statusbar{ display:flex; justify-content:space-between; align-items:center; padding:12px 22px 4px; font-family:var(--font-mono); font-size:12px; color:var(--text-dim); flex-shrink:0; }
+  .statusbar .dots{display:flex; gap:4px; align-items:center;}
+  .statusbar .dots span{width:5px;height:5px;border-radius:50%;background:var(--text-dim);display:block;}
+  .topbar{ display:flex; align-items:center; justify-content:space-between; padding:6px 18px 14px; flex-shrink:0; border-bottom:1px solid var(--border-soft); }
+  .brand{display:flex; align-items:center; gap:9px;}
+  .brand-mark{ width:34px;height:34px;border-radius:10px; background:linear-gradient(155deg,var(--teal),#1f8e84); display:flex;align-items:center;justify-content:center;flex-shrink:0; box-shadow:0 4px 14px rgba(53,196,184,0.35); }
+  .brand-mark svg{width:19px;height:19px;stroke:#06201d;}
+  .brand-text .t1{font-family:var(--font-display); font-weight:700; font-size:16.5px; letter-spacing:-0.01em; line-height:1;}
+  .brand-text .t2{font-size:10.5px; color:var(--text-faint); letter-spacing:.04em; margin-top:3px; text-transform:uppercase;}
+  .theme-toggle{ width:36px;height:36px;border-radius:11px;background:var(--bg-elev-2); border:1px solid var(--border); display:flex;align-items:center;justify-content:center; cursor:pointer; color:var(--text-dim); }
+  .theme-toggle svg{width:17px;height:17px;}
+  main{flex:1; overflow-y:auto; overflow-x:hidden; -webkit-overflow-scrolling:touch;}
+  .tab{display:none; padding:18px 18px 26px; animation:fadein .25s ease;}
+  .tab.active{display:block;}
+  @keyframes fadein{from{opacity:0; transform:translateY(4px);} to{opacity:1; transform:translateY(0);}}
+  h1,h2,h3{font-family:var(--font-display); margin:0; letter-spacing:-0.01em;}
+  .eyebrow{font-size:10.5px; text-transform:uppercase; letter-spacing:.1em; color:var(--text-faint); font-weight:600;}
+  p{margin:0; color:var(--text-dim); font-size:13.5px; line-height:1.55;}
+  .seismic{width:100%; height:22px; margin:14px 0;}
+  .seismic path{fill:none; stroke:var(--teal); stroke-width:1.4; stroke-linecap:round; stroke-linejoin:round; opacity:.55;}
+  @media (prefers-reduced-motion:no-preference){ .seismic path{ stroke-dasharray:400; stroke-dashoffset:400; animation:draw 1.8s ease-out forwards;} }
+  @keyframes draw{to{stroke-dashoffset:0;}}
+  .hero{ background:linear-gradient(160deg,var(--bg-elev) 0%, var(--bg-elev-2) 100%); border:1px solid var(--border); border-radius:20px; padding:20px 20px 18px; position:relative; overflow:hidden; }
+  .hero::after{ content:""; position:absolute; right:-40px; top:-40px; width:140px; height:140px; border-radius:50%; background:radial-gradient(circle,var(--teal-dim),transparent 70%); }
+  .hero h1{font-size:22px; line-height:1.22;}
+  .hero p{margin-top:8px; max-width:290px;}
+  .stat-row{display:grid; grid-template-columns:repeat(3,1fr); gap:8px; margin-top:16px;}
+  .stat{background:var(--bg-elev-3); border:1px solid var(--border-soft); border-radius:13px; padding:10px 8px; text-align:left;}
+  .stat .num{font-family:var(--font-mono); font-size:19px; font-weight:600;}
+  .stat .lbl{font-size:10px; color:var(--text-faint); margin-top:2px; line-height:1.3;}
+  .quick-actions{display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:16px;}
+  .qa-btn{ display:flex; align-items:center; gap:10px; background:var(--bg-elev); border:1px solid var(--border); border-radius:14px; padding:13px 12px; cursor:pointer; text-align:left; color:var(--text); font-family:var(--font-body); }
+  .qa-btn:active{transform:scale(.97);}
+  .qa-btn .ic{width:32px;height:32px;border-radius:9px; display:flex;align-items:center;justify-content:center; flex-shrink:0;}
+  .qa-btn .ic svg{width:16px;height:16px;}
+  .qa-btn .lbl{font-size:12.5px; font-weight:600; line-height:1.25;}
+  .section-head{display:flex; align-items:baseline; justify-content:space-between; margin:26px 0 12px;}
+  .section-head h2{font-size:15.5px;}
+  .section-head .more{font-size:11px; color:var(--teal); font-weight:600; cursor:pointer;}
+  .district-mini{display:flex; align-items:center; justify-content:space-between; background:var(--bg-elev); border:1px solid var(--border); border-radius:13px; padding:11px 13px; margin-bottom:8px; cursor:pointer;}
+  .district-mini:active{transform:scale(.98);}
+  .district-mini .left{display:flex; align-items:center; gap:10px;}
+  .rank-badge{font-family:var(--font-mono); font-size:11px; color:var(--text-faint); width:16px;}
+  .district-mini .name{font-size:13.5px; font-weight:600;}
+  .district-mini .tier-tag{font-size:9.5px; color:var(--text-faint); margin-top:1px;}
+  .score-chip{font-family:var(--font-mono); font-weight:600; font-size:13px; padding:4px 9px; border-radius:8px;}
+  .safety-note{margin-top:22px; border:1px dashed var(--border); border-radius:13px; padding:12px 13px; display:flex; gap:10px;}
+  .safety-note svg{width:16px;height:16px; stroke:var(--amber); flex-shrink:0; margin-top:1px;}
+  .safety-note p{font-size:11.5px;}
+  .safety-note b{color:var(--text);}
+  .card{background:var(--bg-elev); border:1px solid var(--border); border-radius:16px; padding:16px;}
+  .chip-row{display:flex; gap:8px; overflow-x:auto; padding-bottom:4px; margin:0 -18px; padding-left:18px; padding-right:18px; scrollbar-width:none;}
+  .chip-row::-webkit-scrollbar{display:none;}
+  .filter-chip{ flex-shrink:0; display:flex; align-items:center; gap:6px; padding:8px 13px; border-radius:100px; border:1px solid var(--border); background:var(--bg-elev); font-size:12px; font-weight:600; cursor:pointer; color:var(--text-dim); white-space:nowrap; }
+  .filter-chip .dot{width:7px;height:7px;border-radius:50%; flex-shrink:0;}
+  .filter-chip.active{color:var(--text); border-color:currentColor; background:var(--bg-elev-2);}
+  #leaflet-map{width:100%; height:250px; border-radius:16px; overflow:hidden; border:1px solid var(--border); margin-top:12px; background:var(--bg-elev-3);}
+  .leaflet-popup-content-wrapper{background:var(--bg-elev-2); color:var(--text); border-radius:10px; font-family:var(--font-body);}
+  .leaflet-popup-tip{background:var(--bg-elev-2);}
+  .leaflet-popup-content{margin:10px 12px; font-size:12.5px;}
+  .popup-title{font-weight:700; font-size:13px; margin-bottom:3px; font-family:var(--font-display);}
+  .popup-type{display:inline-block; font-size:9.5px; text-transform:uppercase; letter-spacing:.05em; padding:2px 7px; border-radius:5px; margin-bottom:5px; font-weight:700;}
+  .map-legend-note{font-size:10px; color:var(--text-faint); margin-top:8px; line-height:1.5;}
+  .district-scroll{display:flex; gap:8px; overflow-x:auto; margin:0 -18px; padding:2px 18px 6px; scrollbar-width:none;}
+  .district-scroll::-webkit-scrollbar{display:none;}
+  .district-pill{flex-shrink:0; padding:9px 14px; border-radius:12px; border:1px solid var(--border); background:var(--bg-elev); cursor:pointer;}
+  .district-pill.active{background:var(--bg-elev-2); border-color:var(--teal);}
+  .district-pill .pname{font-size:12.5px; font-weight:600;}
+  .district-pill .pscore{font-family:var(--font-mono); font-size:10px; margin-top:2px;}
+  .gauge-wrap{display:flex; align-items:center; gap:18px;}
+  .gauge{position:relative; width:104px; height:104px; flex-shrink:0;}
+  .gauge svg{transform:rotate(-90deg);}
+  .gauge-center{position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;}
+  .gauge-center .n{font-family:var(--font-mono); font-size:26px; font-weight:600; line-height:1;}
+  .gauge-center .u{font-size:8.5px; color:var(--text-faint); margin-top:2px; letter-spacing:.05em;}
+  .badge{display:inline-flex; align-items:center; gap:5px; font-size:11px; font-weight:700; padding:5px 10px; border-radius:8px; margin-top:2px;}
+  .metric-row{display:flex; gap:10px; margin-top:16px;}
+  .metric{flex:1; background:var(--bg-elev-3); border-radius:11px; padding:9px 10px;}
+  .metric .mlbl{font-size:9.5px; color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em;}
+  .metric .mval{font-family:var(--font-mono); font-size:15px; font-weight:600; margin-top:3px;}
+  .metric .bar{height:4px; border-radius:3px; background:var(--bg); margin-top:6px; overflow:hidden;}
+  .metric .bar i{display:block; height:100%; border-radius:3px;}
+  .reco{margin-top:14px; font-size:12px; padding:11px 12px; border-radius:11px; line-height:1.5;}
+  label.flabel{display:block; font-size:11px; font-weight:600; color:var(--text-faint); text-transform:uppercase; letter-spacing:.04em; margin:18px 0 8px;}
+  label.flabel:first-of-type{margin-top:4px;}
+  .cat-grid{display:grid; grid-template-columns:repeat(3,1fr); gap:8px;}
+  .cat-btn{ display:flex; flex-direction:column; align-items:center; gap:6px; padding:12px 6px; border-radius:13px; border:1px solid var(--border); background:var(--bg-elev); cursor:pointer; color:var(--text-dim); }
+  .cat-btn svg{width:19px;height:19px;}
+  .cat-btn span{font-size:10.5px; font-weight:600; text-align:center; line-height:1.2;}
+  .cat-btn.active{border-color:var(--teal); background:var(--teal-dim); color:var(--text);}
+  .amount-row{display:flex; gap:8px;}
+  input[type=number], select, input[type=text]{ width:100%; background:var(--bg-elev-2); border:1px solid var(--border); color:var(--text); border-radius:12px; padding:12px 13px; font-size:14px; font-family:var(--font-body); appearance:none; }
+  input[type=number]:focus, select:focus, input[type=text]:focus{outline:2px solid var(--teal); outline-offset:1px;}
+  .unit-box{width:88px; flex-shrink:0; background:var(--bg-elev-3); border:1px solid var(--border); border-radius:12px; display:flex; align-items:center; justify-content:center; font-family:var(--font-mono); font-size:12.5px; color:var(--text-dim);}
+  select{background-image:url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='14' height='14' viewBox='0 0 24 24' fill='none' stroke='%239FB1C1' stroke-width='2'><path d='M6 9l6 6 6-6'/></svg>"); background-repeat:no-repeat; background-position:right 12px center;}
+  .field-err{color:var(--red); font-size:11px; margin-top:6px; display:none;}
+  .field-err.show{display:block;}
+  .submit-btn{ width:100%; margin-top:24px; padding:15px; border:none; border-radius:14px; cursor:pointer; background:linear-gradient(135deg,var(--teal),#1e8e84); color:#062622; font-family:var(--font-display); font-weight:700; font-size:14.5px; display:flex; align-items:center; justify-content:center; gap:8px; box-shadow:0 10px 24px rgba(53,196,184,.28); }
+  .submit-btn:active{transform:scale(.98);}
+  .submit-btn svg{width:16px;height:16px;}
+  .code-search{display:flex; gap:8px; margin-top:12px;}
+  .code-search input{font-family:var(--font-mono); letter-spacing:.03em; text-transform:uppercase;}
+  .go-btn{flex-shrink:0; width:48px; border:none; border-radius:12px; background:var(--bg-elev-3); border:1px solid var(--border); color:var(--text); cursor:pointer; display:flex; align-items:center; justify-content:center;}
+  .go-btn svg{width:17px;height:17px;}
+  .demo-codes{margin-top:10px; font-size:11px; color:var(--text-faint);}
+  .demo-codes b{color:var(--teal); font-family:var(--font-mono); cursor:pointer;}
+  .track-result{margin-top:18px;}
+  .track-head{display:flex; justify-content:space-between; align-items:flex-start;}
+  .track-code{font-family:var(--font-mono); font-size:16px; font-weight:600;}
+  .track-sub{font-size:11.5px; color:var(--text-faint); margin-top:3px;}
+  .status-pill{font-size:10.5px; font-weight:700; padding:5px 10px; border-radius:8px;}
+  .timeline{margin-top:22px; position:relative; padding-left:6px;}
+  .tl-item{display:flex; gap:14px; position:relative; padding-bottom:26px;}
+  .tl-item:last-child{padding-bottom:0;}
+  .tl-line{position:absolute; left:11px; top:24px; bottom:2px; width:2px; background:var(--border);}
+  .tl-item.done .tl-line{background:var(--teal);}
+  .tl-dot{width:24px;height:24px;border-radius:50%; flex-shrink:0; display:flex; align-items:center; justify-content:center; border:2px solid var(--border); background:var(--bg-elev); z-index:1;}
+  .tl-item.done .tl-dot{background:var(--teal); border-color:var(--teal);}
+  .tl-item.current .tl-dot{border-color:var(--teal); box-shadow:0 0 0 4px var(--teal-dim);}
+  .tl-dot svg{width:11px;height:11px; stroke:#fff;}
+  .tl-item.pending .tl-dot svg{stroke:var(--text-faint);}
+  .tl-title{font-size:13.5px; font-weight:700;}
+  .tl-item.pending .tl-title{color:var(--text-faint); font-weight:600;}
+  .tl-time{font-family:var(--font-mono); font-size:10.5px; color:var(--text-faint); margin-top:2px;}
+  .tl-desc{font-size:11.5px; color:var(--text-dim); margin-top:4px;}
+  .sim-btn{margin-top:16px; width:100%; padding:11px; border-radius:11px; border:1px dashed var(--border); background:transparent; color:var(--text-faint); font-size:11.5px; cursor:pointer; font-family:var(--font-body);}
+  .empty-state{text-align:center; padding:40px 10px; color:var(--text-faint);}
+  .empty-state svg{width:38px;height:38px; margin-bottom:10px; opacity:.5;}
+  .empty-state p{font-size:12.5px;}
+  .about-block{margin-bottom:20px;}
+  .about-block h3{font-size:14px; margin-bottom:7px;}
+  .about-block ul{margin:8px 0 0; padding-left:18px; color:var(--text-dim); font-size:11.5px; line-height:1.6;}
+  .about-block li{margin-bottom:4px;}
+  .about-block li b{color:var(--text);}
+  .toast{ position:absolute; left:18px; right:18px; bottom:86px; background:var(--bg-elev-3); border:1px solid var(--border); border-radius:13px; padding:12px 14px; display:flex; align-items:center; gap:10px; box-shadow:var(--shadow); transform:translateY(20px); opacity:0; pointer-events:none; transition:all .3s ease; z-index:50; }
+  .toast.show{transform:translateY(0); opacity:1;}
+  .toast svg{width:18px;height:18px; stroke:var(--teal); flex-shrink:0;}
+  .toast span{font-size:12px; font-weight:600;}
+  .bottomnav{ display:flex; flex-shrink:0; border-top:1px solid var(--border); background:var(--bg-elev); padding:9px 6px calc(env(safe-area-inset-bottom,0px) + 9px); }
+  .nav-btn{ flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; background:none; border:none; color:var(--text-faint); cursor:pointer; padding:6px 2px; font-family:var(--font-body); }
+  .nav-btn svg{width:20px;height:20px;}
+  .nav-btn span{font-size:9.5px; font-weight:600;}
+  .nav-btn.active{color:var(--teal);}
+  .nav-btn .nb-ic{position:relative;}
+  .nav-btn.active .nb-ic::after{content:"";position:absolute; bottom:-7px; left:50%; transform:translateX(-50%); width:3px;height:3px;border-radius:50%;background:var(--teal);}
+</style>
 </head>
-<body class="flex items-center justify-center min-h-screen p-2">
-
-  <div class="phone-mockup">
-    <div class="dynamic-island"></div>
-
-    <!-- Status Bar (Canlı Saatli) -->
-    <div class="h-10 bg-white flex justify-between items-end px-7 pb-1 text-xs font-bold text-slate-800 z-50 select-none">
-      <span id="live-clock">12:00</span>
-      <div class="flex items-center space-x-1.5 text-[10px] text-slate-700">
-        <i class="fa-solid fa-signal"></i>
-        <i class="fa-solid fa-wifi"></i>
-        <i class="fa-solid fa-battery-full text-xs"></i>
+<body>
+<div class="phone">
+  <div class="statusbar">
+    <span id="clock">--:--</span>
+    <div class="dots"><span></span><span></span><span></span></div>
+  </div>
+  <div class="topbar">
+    <div class="brand">
+      <div class="brand-mark"><svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 L20 6 V12 C20 17 16.5 20.5 12 22 C7.5 20.5 4 17 4 12 V6 Z"/><path d="M9 12.5 L11 14.5 L15.5 9.5"/></svg></div>
+      <div class="brand-text">
+        <div class="t1">Nüve Yardım</div>
+        <div class="t2">İstanbul Afet Koordinasyonu</div>
       </div>
     </div>
-
-    <!-- 1. EKRAN: ANA SAYFA -->
-    <div id="tab-home" class="screen-tab active p-4 space-y-4">
-      <div class="flex justify-between items-center pt-2">
-        <div>
-          <span class="text-[10px] font-extrabold uppercase tracking-wider text-red-600 bg-red-50 px-2 py-0.5 rounded-md">İBB AÇIK VERİ DESTEKLİ</span>
-          <h1 class="text-xl font-black text-slate-900 mt-1 leading-tight">Nüve Yardım</h1>
-        </div>
-        <div class="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-700 text-sm">
-          <i class="fa-regular fa-bell"></i>
-        </div>
-      </div>
-
-      <!-- Kritik Özet Kartı -->
-      <div class="bg-gradient-to-br from-slate-900 via-slate-800 to-red-950 text-white p-4 rounded-2xl shadow-lg relative overflow-hidden">
-        <div class="flex justify-between items-start">
-          <div>
-            <p class="text-[10px] uppercase font-bold text-red-400">Genel Afet Hazırlık İndeksi</p>
-            <h2 class="text-3xl font-black mt-1">68.4 <span class="text-xs font-normal text-slate-400">/ 100</span></h2>
-          </div>
-          <span class="bg-red-500/20 text-red-400 border border-red-500/30 text-[9px] font-bold px-2 py-0.5 rounded-full pulse-dot">● Canlı Model</span>
-        </div>
-        <div class="grid grid-cols-3 gap-2 mt-4 pt-3 border-t border-slate-700/60 text-center">
-          <div>
-            <p class="text-[9px] text-slate-400">İtfaiye Üssü</p>
-            <p class="text-sm font-bold text-white">123</p>
-          </div>
-          <div>
-            <p class="text-[9px] text-slate-400">Sağlık Tesisi</p>
-            <p class="text-sm font-bold text-white">2.500+</p>
-          </div>
-          <div>
-            <p class="text-[9px] text-slate-400">Kritik İlçe</p>
-            <p class="text-sm font-bold text-red-400">3 İlçe</p>
-          </div>
-        </div>
-      </div>
-
-      <!-- 39 İlçe Seçim & Kırılganlık Hesaplayıcı -->
-      <div class="bg-slate-50 border border-slate-200 rounded-2xl p-3.5 space-y-2">
-        <div class="flex justify-between items-center">
-          <h3 class="text-xs font-bold text-slate-800">İlçe Kırılganlık & Öncelik Analizi</h3>
-          <span class="text-[9px] font-semibold text-slate-500">39 İlçe</span>
-        </div>
-        <select id="district-select" onchange="onDistrictChange(this.value)" class="w-full bg-white border border-slate-300 text-xs rounded-xl p-2.5 font-bold text-slate-800 focus:ring-2 focus:ring-red-500 outline-none"></select>
-
-        <div id="district-info-box" class="bg-white p-3 rounded-xl border border-slate-200 space-y-2 text-xs">
-          <div class="flex justify-between items-center">
-            <span id="d-name" class="font-black text-slate-900 text-sm">-</span>
-            <span id="d-badge" class="px-2 py-0.5 rounded text-[10px] font-extrabold bg-red-100 text-red-700">Skor: -</span>
-          </div>
-          <div class="grid grid-cols-3 gap-1 py-1 text-[10px] text-slate-600 border-y border-slate-100">
-            <div>Risk Oranı: <b id="d-risk" class="text-slate-900">-%</b></div>
-            <div>Sağlık: <b id="d-health" class="text-slate-900">-</b></div>
-            <div>İtfaiye: <b id="d-fire" class="text-slate-900">-</b></div>
-          </div>
-          <p id="d-desc" class="text-[10px] text-slate-500 leading-relaxed"></p>
-          <button onclick="goToDonateWithDistrict()" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-2 rounded-lg text-xs transition-colors shadow">
-            Bu İlçeye Bağış Yönlendir →
-          </button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 2. EKRAN: ETKİLEŞİMLİ 39 İLÇE HARİTASI -->
-    <div id="tab-map" class="screen-tab relative h-full">
-      <div id="map"></div>
-    </div>
-
-    <!-- 3. EKRAN: BAĞIŞ YAP -->
-    <div id="tab-donate" class="screen-tab p-4 space-y-4">
-      <div class="pt-2">
-        <h2 class="text-lg font-black text-slate-900">Ayni Bağış Bildirimi</h2>
-        <p class="text-xs text-slate-500">Öncelikli bölgeye ulaştırılmak üzere bağış kaydı oluşturun.</p>
-      </div>
-
-      <form id="donation-form" onsubmit="createDonation(event)" class="space-y-3">
-        <div>
-          <label class="block text-[11px] font-bold text-slate-700 mb-1">Bağış Malzemesi</label>
-          <select id="form-item" required class="w-full bg-slate-50 border border-slate-300 text-xs rounded-xl p-2.5 font-semibold text-slate-800">
-            <option value="İçme Suyu (Koli)">🚰 İçme Suyu (Koli)</option>
-            <option value="Bebek Bezi & Maması">👶 Bebek Bezi & Maması</option>
-            <option value="Kuru Gıda Paketi">📦 Kuru Gıda Paketi</option>
-            <option value="Hijyen & Temizlik Seti">🧼 Hijyen & Temizlik Seti</option>
-            <option value="Çadır & Uyku Tulumu">⛺ Çadır & Uyku Tulumu</option>
-            <option value="Isıtıcı & Powerbank">🔋 Isıtıcı & Powerbank</option>
-          </select>
-        </div>
-
-        <div class="grid grid-cols-2 gap-2">
-          <div>
-            <label class="block text-[11px] font-bold text-slate-700 mb-1">Miktar / Adet</label>
-            <input id="form-qty" type="number" min="1" value="20" required class="w-full bg-slate-50 border border-slate-300 text-xs rounded-xl p-2.5 font-bold text-slate-800">
-          </div>
-          <div>
-            <label class="block text-[11px] font-bold text-slate-700 mb-1">Hedef İlçe</label>
-            <select id="form-district" required class="w-full bg-slate-50 border border-slate-300 text-xs rounded-xl p-2.5 font-bold text-slate-800"></select>
-          </div>
-        </div>
-
-        <div>
-          <label class="block text-[11px] font-bold text-slate-700 mb-1">Teslim Edilecek Lojistik Depo</label>
-          <select id="form-warehouse" required class="w-full bg-slate-50 border border-slate-300 text-xs rounded-xl p-2.5 font-semibold text-slate-800">
-            <option value="İBB Yenikapı Afet Lojistik Merkezi">İBB Yenikapı Afet Lojistik Merkezi</option>
-            <option value="Kadıköy Belediye Sevkiyat Çadırı">Kadıköy Belediye Sevkiyat Çadırı</option>
-            <option value="Bakırköy Meydanı Toplama Noktası">Bakırköy Meydanı Toplama Noktası</option>
-            <option value="Ümraniye Spor Kompleksi Deposu">Ümraniye Spor Kompleksi Deposu</option>
-          </select>
-        </div>
-
-        <div>
-          <label class="block text-[11px] font-bold text-slate-700 mb-1">İletişim Numarası (SMS Bildirimi İçin)</label>
-          <input id="form-phone" type="tel" placeholder="05XX XXX XX XX" required class="w-full bg-slate-50 border border-slate-300 text-xs rounded-xl p-2.5 font-bold text-slate-800">
-        </div>
-
-        <button type="submit" class="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-3.5 rounded-xl text-xs shadow-lg transition-all mt-2">
-          Takip Kodu & QR Oluştur
-        </button>
-      </form>
-    </div>
-
-    <!-- 4. EKRAN: TAKİP & SORGULAMA -->
-    <div id="tab-track" class="screen-tab p-4 space-y-4">
-      <div class="pt-2">
-        <h2 class="text-lg font-black text-slate-900">Lojistik Sorgulama</h2>
-        <p class="text-xs text-slate-500">Takip kodunuzu girerek kargonuzun durumunu izleyin.</p>
-      </div>
-
-      <div class="flex space-x-2">
-        <input id="track-input" type="text" placeholder="NV-2026-0819" class="flex-1 bg-slate-50 border border-slate-300 text-xs rounded-xl p-3 font-mono font-bold uppercase outline-none focus:border-red-600">
-        <button onclick="searchTrackingCode()" class="bg-slate-900 text-white px-4 rounded-xl font-bold text-xs">Sorgula</button>
-      </div>
-
-      <div id="track-card" class="bg-white border border-slate-200 rounded-2xl p-4 shadow-sm space-y-3">
-        <div class="flex justify-between items-center border-b pb-2">
-          <div>
-            <span class="text-[9px] text-slate-400 font-bold uppercase">Sevkiyat Kodu</span>
-            <p id="t-code" class="font-mono font-black text-sm text-red-600">-</p>
-          </div>
-          <span id="t-status-badge" class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">Yolda</span>
-        </div>
-
-        <div class="flex items-center space-x-3 bg-slate-50 p-2.5 rounded-xl">
-          <img id="t-qr" src="" alt="QR" class="w-14 h-14 rounded-lg border bg-white p-0.5">
-          <div class="text-[11px] space-y-0.5">
-            <p><span class="text-slate-500">Malzeme:</span> <b id="t-item" class="text-slate-800">-</b></p>
-            <p><span class="text-slate-500">Hedef İlçe:</span> <b id="t-dest" class="text-slate-800">-</b></p>
-            <p><span class="text-slate-500">İletişim:</span> <b id="t-phone" class="text-slate-800">-</b></p>
-          </div>
-        </div>
-
-        <div class="pt-2">
-          <div class="flex justify-between items-center mb-2">
-            <p class="text-[11px] font-bold text-slate-700">Sevkiyat Adımları</p>
-            <button onclick="stepForward()" class="text-[9px] font-bold text-blue-600 bg-blue-50 px-2 py-0.5 rounded">Aşamayı İlerle ➔</button>
-          </div>
-          <div id="t-timeline" class="space-y-2.5 pl-4 border-l-2 border-slate-200 ml-1 text-xs"></div>
-        </div>
-      </div>
-    </div>
-
-    <!-- Alt Navigasyon -->
-    <div class="h-16 bg-white border-t border-slate-200 flex justify-around items-center px-2 absolute bottom-0 left-0 right-0 z-50">
-      <button onclick="showTab('home')" id="btn-home" class="nav-btn active flex flex-col items-center text-[10px] font-bold text-slate-400">
-        <i class="fa-solid fa-house text-base mb-0.5"></i>
-        <span>Ana Sayfa</span>
-      </button>
-      <button onclick="showTab('map')" id="btn-map" class="nav-btn flex flex-col items-center text-[10px] font-bold text-slate-400">
-        <i class="fa-solid fa-map-location-dot text-base mb-0.5"></i>
-        <span>Harita (39)</span>
-      </button>
-      <button onclick="showTab('donate')" id="btn-donate" class="nav-btn flex flex-col items-center text-[10px] font-bold text-slate-400">
-        <i class="fa-solid fa-hand-holding-heart text-base mb-0.5"></i>
-        <span>Bağış Yap</span>
-      </button>
-      <button onclick="showTab('track')" id="btn-track" class="nav-btn flex flex-col items-center text-[10px] font-bold text-slate-400">
-        <i class="fa-solid fa-qrcode text-base mb-0.5"></i>
-        <span>Takip & Kod</span>
-      </button>
-    </div>
-
+    <button class="theme-toggle" id="themeToggle" aria-label="Görünümü değiştir">
+      <svg id="themeIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v1M12 20v1M4.2 4.2l.7.7M19.1 19.1l.7.7M3 12h1M20 12h1M4.2 19.8l.7-.7M19.1 4.9l.7-.7"/><circle cx="12" cy="12" r="4.4"/></svg>
+    </button>
   </div>
 
-  <script>
-    // Gerçek Saat Entegrasyonu
-    function updateClock() {
-      const now = new Date();
-      document.getElementById('live-clock').textContent = now.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-    }
-    setInterval(updateClock, 1000);
-    updateClock();
+  <main id="app">
+    <!-- ================= ANA SAYFA ================= -->
+    <section class="tab active" id="tab-home">
+      <div class="hero">
+        <div class="eyebrow">Gerçek Veriyle Karar Desteği</div>
+        <h1>İhtiyacın en yüksek olduğu yere, en hızlı yoldan.</h1>
+        <p>39 ilçenin riskli yapı öngörüsü, toplanma alanları ve altyapı verisiyle hesaplanan öncelik skoruna göre bağışını yönlendir, sevkiyatını uçtan uca izle.</p>
+        <div class="stat-row">
+          <div class="stat"><div class="num" id="statDistricts">39</div><div class="lbl">İlçe Verisi</div></div>
+          <div class="stat"><div class="num" style="color:var(--red)" id="statCritical">3</div><div class="lbl">Kritik İlçe</div></div>
+          <div class="stat"><div class="num" style="color:var(--amber)" id="statAssembly">45</div><div class="lbl">Toplanma Alanı</div></div>
+        </div>
+      </div>
 
-    // 39 İlçenin Tamamı (Koordinat ve Hesaplanan Skorlar)
-    const allDistricts = [
-      { name: "GÜNGÖREN", risk: 38.6, health: 273, fire: 1, score: 100.0, lat: 41.017, lng: 28.888 },
-      { name: "ESENLER", risk: 38.0, health: 362, fire: 2, score: 89.3, lat: 41.045, lng: 28.875 },
-      { name: "ZEYTİNBURNU", risk: 29.9, health: 319, fire: 1, score: 73.9, lat: 40.993, lng: 28.912 },
-      { name: "ATAŞEHİR", risk: 27.5, health: 738, fire: 1, score: 59.7, lat: 40.984, lng: 29.115 },
-      { name: "BAKIRKÖY", risk: 28.2, health: 691, fire: 2, score: 58.8, lat: 40.978, lng: 28.874 },
-      { name: "BAĞCILAR", risk: 25.0, health: 631, fire: 1, score: 54.7, lat: 41.049, lng: 28.858 },
-      { name: "BAHÇELİEVLER", risk: 25.6, health: 684, fire: 2, score: 52.6, lat: 41.002, lng: 28.855 },
-      { name: "KAĞITHANE", risk: 23.7, health: 424, fire: 3, score: 49.4, lat: 41.080, lng: 28.964 },
-      { name: "ÜSKÜDAR", risk: 25.1, health: 850, fire: 4, score: 46.9, lat: 41.019, lng: 29.011 },
-      { name: "BEYKOZ", risk: 22.9, health: 245, fire: 8, score: 45.7, lat: 41.134, lng: 29.098 },
-      { name: "KÜÇÜKÇEKMECE", risk: 22.1, health: 590, fire: 2, score: 44.2, lat: 41.001, lng: 28.791 },
-      { name: "MALTEPE", risk: 21.8, health: 610, fire: 2, score: 43.1, lat: 40.928, lng: 29.144 },
-      { name: "FATİH", risk: 22.4, health: 720, fire: 4, score: 41.8, lat: 41.016, lng: 28.953 },
-      { name: "AVCILAR", risk: 21.5, health: 480, fire: 2, score: 41.0, lat: 40.980, lng: 28.720 },
-      { name: "KADIKÖY", risk: 21.0, health: 1420, fire: 2, score: 34.2, lat: 40.990, lng: 29.028 },
-      { name: "KARTAL", risk: 19.5, health: 530, fire: 3, score: 33.1, lat: 40.890, lng: 29.190 },
-      { name: "PENDİK", risk: 18.9, health: 670, fire: 4, score: 31.5, lat: 40.875, lng: 29.233 },
-      { name: "ÜMRANİYE", risk: 18.2, health: 710, fire: 3, score: 30.2, lat: 41.016, lng: 29.128 },
-      { name: "BEŞİKTAŞ", risk: 18.5, health: 980, fire: 3, score: 29.1, lat: 41.049, lng: 29.019 },
-      { name: "ŞİŞLİ", risk: 17.8, health: 920, fire: 2, score: 28.5, lat: 41.060, lng: 28.987 },
-      { name: "SARIYER", risk: 17.2, health: 510, fire: 5, score: 27.4, lat: 41.160, lng: 29.038 },
-      { name: "EYÜPSULTAN", risk: 16.8, health: 430, fire: 4, score: 26.2, lat: 41.050, lng: 28.930 },
-      { name: "GAZİOSMANPAŞA", risk: 19.0, health: 410, fire: 2, score: 36.4, lat: 41.060, lng: 28.910 },
-      { name: "SULTANGAZİ", risk: 18.0, health: 390, fire: 2, score: 35.1, lat: 41.100, lng: 28.870 },
-      { name: "BEYOĞLU", risk: 18.4, health: 510, fire: 3, score: 32.0, lat: 41.030, lng: 28.975 },
-      { name: "BÜYÜKÇEKMECE", risk: 17.5, health: 340, fire: 3, score: 30.8, lat: 41.020, lng: 28.590 },
-      { name: "BEYLİKDÜZÜ", risk: 16.5, health: 490, fire: 2, score: 28.0, lat: 41.000, lng: 28.640 },
-      { name: "ESENYURT", risk: 19.8, health: 620, fire: 3, score: 35.5, lat: 41.030, lng: 28.680 },
-      { name: "BAŞAKŞEHİR", risk: 15.0, health: 450, fire: 3, score: 24.5, lat: 41.090, lng: 28.800 },
-      { name: "TUZLA", risk: 16.0, health: 310, fire: 3, score: 27.2, lat: 40.820, lng: 29.300 },
-      { name: "SANCAKTEPE", risk: 15.8, health: 360, fire: 2, score: 26.8, lat: 41.000, lng: 29.230 },
-      { name: "ÇEKMEKÖY", risk: 14.5, health: 280, fire: 2, score: 23.4, lat: 41.040, lng: 29.180 },
-      { name: "SULTANBEYLİ", risk: 17.0, health: 290, fire: 2, score: 29.6, lat: 40.960, lng: 29.260 },
-      { name: "SİLİVRİ", risk: 16.2, health: 220, fire: 4, score: 28.1, lat: 41.070, lng: 28.250 },
-      { name: "ÇATALCA", risk: 13.0, health: 120, fire: 4, score: 21.0, lat: 41.140, lng: 28.460 },
-      { name: "ŞİLE", risk: 12.0, health: 95, fire: 3, score: 19.5, lat: 41.170, lng: 29.610 },
-      { name: "ARNAVUTKÖY", risk: 14.0, health: 240, fire: 3, score: 22.8, lat: 41.180, lng: 28.740 },
-      { name: "ADALAR", risk: 15.5, health: 60, fire: 3, score: 26.0, lat: 40.870, lng: 29.130 },
-      { name: "BAYRAMPAŞA", risk: 23.0, health: 410, fire: 2, score: 46.2, lat: 41.040, lng: 28.900 }
-    ];
+      <div class="quick-actions">
+        <button class="qa-btn" onclick="goTab('donate')">
+          <div class="ic" style="background:var(--teal-dim);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--teal)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 4l9 5.5V19a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/><path d="M12 10v4M10 12h4"/></svg></div>
+          <div class="lbl">Bağış Yap</div>
+        </button>
+        <button class="qa-btn" onclick="goTab('map')">
+          <div class="ic" style="background:var(--blue-dim);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--blue)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 4 5v16l5-2 6 2 5-2V3l-5 2-6-2Z"/><path d="M9 3v16M15 5v16"/></svg></div>
+          <div class="lbl">Haritayı Gör</div>
+        </button>
+        <button class="qa-btn" onclick="goTab('track')">
+          <div class="ic" style="background:var(--amber-dim);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--amber)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></div>
+          <div class="lbl">Kod Sorgula</div>
+        </button>
+        <button class="qa-btn" onclick="goTab('about')">
+          <div class="ic" style="background:var(--green-dim);"><svg viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></div>
+          <div class="lbl">Nasıl Çalışır?</div>
+        </button>
+      </div>
 
-    let currentDistrict = "GÜNGÖREN";
-    let map = null;
+      <svg class="seismic" viewBox="0 0 400 22" preserveAspectRatio="none"><path d="M0 11 H150 L162 2 L174 20 L186 11 H230 L242 4 L250 18 L258 11 H400"/></svg>
 
-    const dummyDatabase = {
-      'NV-2026-0819': { code: 'NV-2026-0819', item: '25 Koli İçme Suyu', district: 'GÜNGÖREN', phone: '0532 123 45 67', stage: 2 }
-    };
+      <div class="section-head">
+        <h2>En Yüksek Öncelikli 3 İlçe</h2>
+        <span class="more" onclick="goTab('map')">Tüm ilçeler →</span>
+      </div>
+      <div id="homeDistrictList"></div>
 
-    const stagesText = [
-      "1. Kayıt Alındı & QR Üretildi",
-      "2. Depoda Tasnif Edildi",
-      "3. Sevkiyat Aracına Yüklendi",
-      "4. Hedef İlçeye Ulaştı",
-      "5. İhtiyaç Sahibine Teslim Edildi"
-    ];
+      <div class="safety-note">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 9v4M12 16.5v.01"/><path d="M10.3 3.9 2.6 17a1.8 1.8 0 0 0 1.6 2.7h15.6a1.8 1.8 0 0 0 1.6-2.7L13.7 3.9a1.8 1.8 0 0 0-3.4 0Z"/></svg>
+        <p><b>Bu bir prototiptir.</b> İlçe skoru ve toplanma alanları gerçek koordinatlarla entegre edilmiştir. Acil yardım için <b>112</b>'yi arayın.</p>
+      </div>
+    </section>
 
-    document.addEventListener('DOMContentLoaded', () => {
-      initDropdowns();
-      onDistrictChange("GÜNGÖREN");
-      loadTrackData('NV-2026-0819');
-    });
+    <!-- ================= HARİTA ================= -->
+    <section class="tab" id="tab-map">
+      <h2 style="font-size:18px;">Saha Haritası ve Toplanma Alanları</h2>
+      <p style="margin-top:4px;">İtfaiye, sağlık tesisleri ve afet toplanma alanı konumları.</p>
+      <div class="chip-row" id="filterRow" style="margin-top:14px;">
+        <div class="filter-chip active" data-filter="all"><span class="dot" style="background:var(--text-faint);"></span>Tümü</div>
+        <div class="filter-chip" data-filter="assembly" style="color:var(--amber);"><span class="dot" style="background:var(--amber);"></span>Toplanma Alanı</div>
+        <div class="filter-chip" data-filter="fire" style="color:var(--blue);"><span class="dot" style="background:var(--blue);"></span>İtfaiye</div>
+        <div class="filter-chip" data-filter="health" style="color:var(--green);"><span class="dot" style="background:var(--green);"></span>Sağlık</div>
+        <div class="filter-chip" data-filter="quake" style="color:var(--red);"><span class="dot" style="background:var(--red);"></span>Deprem</div>
+      </div>
+      <div id="leaflet-map"></div>
+      <div class="map-legend-note"><b style="color:var(--amber)">Toplanma Alanları</b> yardımların doğrudan ulaştırılacağı ve koordinasyonun sağlanacağı resmi alanlardır.</div>
 
-    function initDropdowns() {
-      const s1 = document.getElementById('district-select');
-      const s2 = document.getElementById('form-district');
-      s1.innerHTML = ''; s2.innerHTML = '';
+      <div class="section-head">
+        <h2>Karar Destek Paneli</h2>
+      </div>
+      <p>Bir ilçe seç, riskli yapı oranı ve altyapı kapasitesine göre hesaplanan öncelik skorunu incele.</p>
+      <div class="district-scroll" id="districtScroll" style="margin-top:12px;"></div>
+      <div class="card" id="districtCard" style="margin-top:4px;"></div>
+    </section>
 
-      allDistricts.forEach(d => {
-        const o1 = document.createElement('option'); o1.value = d.name; o1.textContent = `${d.name} (Skor: ${d.score})`; s1.appendChild(o1);
-        const o2 = document.createElement('option'); o2.value = d.name; o2.textContent = d.name; s2.appendChild(o2);
-      });
-    }
+    <!-- ================= YARDIM ET ================= -->
+    <section class="tab" id="tab-donate">
+      <h2 style="font-size:18px;">Ayni Bağış Oluştur</h2>
+      <p style="margin-top:4px;">Bağışının kategorisini, miktarını ve hedef toplanma/teslim noktasını belirle.</p>
 
-    function onDistrictChange(name) {
-      currentDistrict = name;
-      const d = allDistricts.find(x => x.name === name);
-      if (!d) return;
+      <label class="flabel">Kategori</label>
+      <div class="cat-grid" id="catGrid"></div>
+      <div class="field-err" id="errCat">Lütfen bir kategori seç.</div>
 
-      document.getElementById('d-name').textContent = d.name;
-      document.getElementById('d-badge').textContent = `Öncelik: ${d.score}/100`;
-      document.getElementById('d-risk').textContent = `%${d.risk}`;
-      document.getElementById('d-health').textContent = d.health;
-      document.getElementById('d-fire').textContent = d.fire;
+      <label class="flabel">Miktar</label>
+      <div class="amount-row">
+        <input type="number" id="amountInput" placeholder="Örn. 50" min="1">
+        <div class="unit-box" id="unitBox">—</div>
+      </div>
+      <div class="field-err" id="errAmount">Geçerli bir miktar gir.</div>
 
-      const desc = document.getElementById('d-desc');
-      if (d.score >= 60) {
-        document.getElementById('d-badge').className = "px-2 py-0.5 rounded text-[10px] font-extrabold bg-red-100 text-red-700";
-        desc.innerHTML = `🚨 <b>Yüksek Öncelikli Bölge:</b> Altyapı kapasitesine oranla yapısal risk yüksek. Acil yardım listesinde.`;
-      } else {
-        document.getElementById('d-badge').className = "px-2 py-0.5 rounded text-[10px] font-extrabold bg-emerald-100 text-emerald-700";
-        desc.innerHTML = `✅ <b>Lojistik Destek Bölgesi:</b> Altyapı kapasitesi yeterli; dağıtım merkezi olarak kullanılabilir.`;
-      }
-    }
+      <label class="flabel">Hedef İlçe</label>
+      <select id="districtSelect"><option value="">İlçe seç…</option></select>
+      <div class="field-err" id="errDistrict">Hedef ilçe seçmelisin.</div>
 
-    function goToDonateWithDistrict() {
-      document.getElementById('form-district').value = currentDistrict;
-      showTab('donate');
-    }
+      <label class="flabel">Toplanma ve Lojistik Teslim Noktası</label>
+      <select id="logisticsSelect"><option value="">Teslim noktası seç…</option></select>
+      <div class="field-err" id="errLogistics">Teslim noktası seçmelisin.</div>
+      <p style="font-size:10px; margin-top:6px; color:var(--text-faint);">Seçilen ilçedeki resmi toplanma alanları ve itfaiye üsleri listelenmektedir.</p>
 
-    function showTab(tabId) {
-      document.querySelectorAll('.screen-tab').forEach(t => t.classList.remove('active'));
-      document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('active'));
-      document.getElementById('tab-' + tabId).classList.add('active');
-      document.getElementById('btn-' + tabId).classList.add('active');
-      if (tabId === 'map') setTimeout(setupMap, 150);
-    }
+      <button class="submit-btn" id="submitDonation">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M13 6l6 6-6 6"/></svg>
+        Bağışı Oluştur
+      </button>
+    </section>
 
-    function setupMap() {
-      if (!map) {
-        map = L.map('map', { zoomControl: false }).setView([41.015, 28.97], 10);
-        L.tileLayer('https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png').addTo(map);
+    <!-- ================= TAKİP ================= -->
+    <section class="tab" id="tab-track">
+      <h2 style="font-size:18px;">Gerçek Zamanlı Sevkiyat Takibi</h2>
+      <p style="margin-top:4px;">Benzersiz takip kodunla bağışının anlık konumunu ve lojistik aşamasını gör.</p>
+      <div class="code-search">
+        <input type="text" id="trackInput" placeholder="NV-2026-XXXX">
+        <button class="go-btn" id="trackGo"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg></button>
+      </div>
+      <div class="demo-codes">Örnek kodlar: <b onclick="tryCode('NV-2026-4471')">NV-2026-4471</b> · <b onclick="tryCode('NV-2026-1190')">NV-2026-1190</b></div>
+      <div id="trackResult"></div>
+    </section>
 
-        // 39 İlçenin Tamamını Haritaya Ekle
-        allDistricts.forEach(d => {
-          const color = d.score >= 60 ? '#dc2626' : (d.score >= 35 ? '#f59e0b' : '#10b981');
-          L.circleMarker([d.lat, d.lng], {
-            radius: d.score > 70 ? 10 : 7,
-            fillColor: color,
-            color: '#ffffff',
-            weight: 2,
-            opacity: 1,
-            fillOpacity: 0.85
-          }).addTo(map).bindPopup(`
-            <div style="font-family:sans-serif; font-size:12px;">
-              <b>${d.name}</b><br>
-              Öncelik Skoru: <b>${d.score}</b><br>
-              Riskli Bina: %${d.risk}<br>
-              Sağlık: ${d.health} | İtfaiye: ${d.fire}
-            </div>
-          `);
-        });
-      } else {
-        map.invalidateSize();
-      }
-    }
+    <!-- ================= HAKKINDA ================= -->
+    <section class="tab" id="tab-about">
+      <h2 style="font-size:18px;">Hakkında</h2>
+      <svg class="seismic" viewBox="0 0 400 22" preserveAspectRatio="none"><path d="M0 11 H120 L132 3 L144 19 L156 11 H210 L222 5 L230 17 L238 11 H400"/></svg>
 
-    function createDonation(e) {
-      e.preventDefault();
-      const code = 'NV-2026-' + Math.floor(1000 + Math.random() * 9000);
-      const item = `${document.getElementById('form-qty').value} Adet ${document.getElementById('form-item').value}`;
-      const district = document.getElementById('form-district').value;
-      const phone = document.getElementById('form-phone').value;
+      <div class="about-block">
+        <h3>Nüve Yardım nedir?</h3>
+        <p>İstanbul'da olası bir afet anında ayni bağışların toplanma alanlarına ve en yüksek riskli ilçelere veri odaklı ve şeffaf bir takip mekanizmasıyla ulaştırılmasını sağlayan koordinasyon sistemidir.</p>
+      </div>
 
-      dummyDatabase[code] = { code, item, district, phone, stage: 1 };
-      document.getElementById('donation-form').reset();
-      loadTrackData(code);
-      showTab('track');
-    }
+      <div class="about-block">
+        <h3>Toplanma Alanları ve Gerçek Takip Altyapısı</h3>
+        <ul>
+          <li><b>Toplanma Alanları Entegrasyonu:</b> İlçelerdeki resmi afet toplanma alanları haritada işaretlenmiş olup bağışlar doğrudan bu noktalara sevk edilir.</li>
+          <li><b>Uçtan Uca Takip:</b> Her bağış için üretilen benzersiz kodlar sayesinde ürünlerin çıkışından teslimat noktasına kadarki tüm aşamalar simüle edilebilir ve anlık izlenebilir[cite: 1].</li>
+        </ul>
+      </div>
+    </section>
+  </main>
 
-    function loadTrackData(code) {
-      const data = dummyDatabase[code];
-      if (!data) return;
+  <div class="toast" id="toast">
+    <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8.5 12.5l2.3 2.3L16 9.5"/></svg>
+    <span id="toastMsg">Kaydedildi</span>
+  </div>
 
-      document.getElementById('track-input').value = data.code;
-      document.getElementById('t-code').textContent = data.code;
-      document.getElementById('t-item').textContent = data.item;
-      document.getElementById('t-dest').textContent = data.district;
-      document.getElementById('t-phone').textContent = data.phone;
-      document.getElementById('t-status-badge').textContent = `${data.stage}. Aşama`;
+  <nav class="bottomnav" id="bottomnav">
+    <button class="nav-btn active" data-tab="home">
+      <span class="nb-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 11 12 4l8 7"/><path d="M6 10v9a1 1 0 0 0 1 1h4v-6h2v6h4a1 1 0 0 0 1-1v-9"/></svg></span>
+      <span>Ana Sayfa</span>
+    </button>
+    <button class="nav-btn" data-tab="map">
+      <span class="nb-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3 4 5v16l5-2 6 2 5-2V3l-5 2-6-2Z"/><path d="M9 3v16M15 5v16"/></svg></span>
+      <span>Harita</span>
+    </button>
+    <button class="nav-btn" data-tab="donate">
+      <span class="nb-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9.5 12 4l9 5.5V19a1 1 0 0 1-1 1h-5v-6H9v6H4a1 1 0 0 1-1-1Z"/><path d="M12 10v4M10 12h4"/></svg></span>
+      <span>Yardım Et</span>
+    </button>
+    <button class="nav-btn" data-tab="track">
+      <span class="nb-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19c3-6 6 3 9-3s5-9 8-3" stroke-dasharray="2.6 3"/><circle cx="20" cy="6" r="1.6" fill="currentColor" stroke="none"/></svg></span>
+      <span>Takip</span>
+    </button>
+    <button class="nav-btn" data-tab="about">
+      <span class="nb-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 11v6M12 7.5v.01"/></svg></span>
+      <span>Hakkında</span>
+    </button>
+  </nav>
+</div>
 
-      // QR Kod
-      document.getElementById('t-qr').src = `https://api.qrserver.com/v1/create-qr-code/?size=120x120&data=${encodeURIComponent(data.code + '-' + data.district)}`;
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.9.4/leaflet.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/leaflet.markercluster/1.5.3/leaflet.markercluster.js"></script>
+<script>
+const districtScores = [{"ilce":"Güngören","risk_orani":38.6,"saglik_sayisi":273,"itfaiye_sayisi":1,"altyapi_kapasitesi":18.6,"oncelik_skoru":100.0,"tier":"kritik"},{"ilce":"Zeytinburnu","risk_orani":29.9,"saglik_sayisi":319,"itfaiye_sayisi":1,"altyapi_kapasitesi":24.0,"oncelik_skoru":93.1,"tier":"kritik"},{"ilce":"Esenler","risk_orani":38.0,"saglik_sayisi":362,"itfaiye_sayisi":2,"altyapi_kapasitesi":45.0,"oncelik_skoru":85.6,"tier":"kritik"},{"ilce":"Ataşehir","risk_orani":27.5,"saglik_sayisi":738,"itfaiye_sayisi":1,"altyapi_kapasitesi":61.7,"oncelik_skoru":71.3,"tier":"yuksek"},{"ilce":"Bakırköy","risk_orani":28.2,"saglik_sayisi":691,"itfaiye_sayisi":2,"altyapi_kapasitesi":66.5,"oncelik_skoru":71.2,"tier":"yuksek"},{"ilce":"Beykoz","risk_orani":22.9,"saglik_sayisi":245,"itfaiye_sayisi":8,"altyapi_kapasitesi":40.3,"oncelik_skoru":70.2,"tier":"yuksek"},{"ilce":"Bağcılar","risk_orani":25.0,"saglik_sayisi":631,"itfaiye_sayisi":1,"altyapi_kapasitesi":52.7,"oncelik_skoru":68.8,"tier":"yuksek"},{"ilce":"Kadıköy","risk_orani":14.2,"saglik_sayisi":2188,"itfaiye_sayisi":2,"altyapi_kapasitesi":82.7,"oncelik_skoru":15.4,"tier":"lojistik"}];
 
-      // Timeline
-      const timeline = document.getElementById('t-timeline');
-      timeline.innerHTML = '';
-      stagesText.forEach((st, idx) => {
-        const stepNum = idx + 1;
-        const isDone = stepNum <= data.stage;
-        const isCurrent = stepNum === data.stage;
+const assemblyPoints = [
+  {name: "Güngören Gençosman Safa Parkı Toplanma Alanı", district: "Güngören", lat: 41.0185, lng: 28.8820},
+  {name: "Zeytinburnu 15 Temmuz Meydanı Toplanma Alanı", district: "Zeytinburnu", lat: 40.9880, lng: 28.9020},
+  {name: "Esenler 15 Temmuz Millet Bahçesi Toplanma Alanı", district: "Esenler", lat: 41.0450, lng: 28.8800},
+  {name: "Kadıköy Kalamış Atatürk Parkı Toplanma Alanı", district: "Kadıköy", lat: 40.9790, lng: 29.0350},
+  {name: "Beşiktaş Yıldız Parkı Toplanma Alanı", district: "Beşiktaş", lat: 41.0520, lng: 29.0120},
+  {name: "Bakırköy Botanik Parkı Toplanma Alanı", district: "Bakırköy", lat: 40.9750, lng: 28.8500}
+];
 
-        const p = document.createElement('p');
-        p.className = `${isCurrent ? 'font-black text-red-600' : (isDone ? 'font-bold text-slate-800' : 'text-slate-400')} relative`;
-        p.innerHTML = `<span class="w-2.5 h-2.5 rounded-full ${isCurrent ? 'bg-red-600 ring-2 ring-red-200' : (isDone ? 'bg-emerald-500' : 'bg-slate-300')} inline-block absolute -left-[21px] top-1"></span>${st}`;
-        timeline.appendChild(p);
-      });
-    }
+const fireStations = [{"name":"Güngören İtfaiye İstasyonu","district":"Güngören","lat":41.01701,"lng":28.88854},{"name":"Zeytinburnu İtfaiye İstasyonu","district":"Zeytinburnu","lat":40.99303,"lng":28.91215},{"name":"Kadıköy İtfaiye İstasyonu","district":"Kadıköy","lat":40.99124,"lng":29.03315}];
+const healthFacilities = [{"name":"Bakırköy Dr. Sadi Konuk Hastanesi","district":"Bakırköy","cat":"Eğitim Araştırma","lat":40.99377,"lng":28.86506}];
+const quakeEvents = [{"time":"2026-08-20 05:40","lat":40.7795,"lng":29.1053,"depth":11.5,"mag":2.9,"yer":"Adalar Açıkları (İstanbul)"}];
 
-    function searchTrackingCode() {
-      const val = document.getElementById('track-input').value.trim().toUpperCase();
-      if (dummyDatabase[val]) {
-        loadTrackData(val);
-      } else {
-        alert('Bu koda ait bir sevkiyat kaydı bulunamadı.');
-      }
-    }
+const logisticsPoints = [...assemblyPoints, ...fireStations];
 
-    function stepForward() {
-      const val = document.getElementById('track-input').value.trim().toUpperCase();
-      if (dummyDatabase[val] && dummyDatabase[val].stage < 5) {
-        dummyDatabase[val].stage++;
-        loadTrackData(val);
-      }
-    }
-  </script>
+const TIER_INFO = {
+  kritik:   { label: 'Kritik',        color: 'var(--red)',   bg: 'var(--red-dim)',   reco: 'Kritik acil lojistik yönlendirmesi: toplanma alanlarına doğrudan sevkiyat planlandı.' },
+  yuksek:   { label: 'Yüksek',        color: 'var(--amber)', bg: 'var(--amber-dim)', reco: 'Yüksek öncelikli sevkiyat: 24 saat içinde teslimat önerilir.' },
+  orta:     { label: 'Orta',          color: 'var(--blue)',  bg: 'var(--blue-dim)',  reco: 'Standart sevkiyat planı.' },
+  dusuk:    { label: 'Düşük',         color: 'var(--green)', bg: 'var(--green-dim)', reco: 'Rutin stok takviyesi yeterli.' },
+  lojistik: { label: 'Lojistik Üssü', color: 'var(--teal)',  bg: 'var(--teal-dim)',  reco: 'Dağıtım ve aktarma merkezi olarak kullanılmaktadır.' }
+};
+
+const categories = [
+  {id:'su', name:'Su', unit:'litre', icon:'water'},
+  {id:'bebek-bezi', name:'Bebek Bezi', unit:'paket', icon:'box'},
+  {id:'kuru-gida', name:'Kuru Gıda', unit:'kg', icon:'food'},
+  {id:'cadir', name:'Çadır', unit:'adet', icon:'tent'},
+  {id:'battaniye', name:'Battaniye', unit:'adet', icon:'blanket'},
+  {id:'hijyen', name:'Hijyen Seti', unit:'set', icon:'hygiene'},
+];
+const stages = ['Oluşturuldu','Doğrulandı','Toplanma Alanına Teslim','Sevkiyatta','İhtiyaç Sahibine Ulaştı'];
+const stageDesc = [
+  'Bağış talebi sisteme kaydedildi ve güvenli kod üretildi.',
+  'Kategori ve miktar sahadaki koordine ekibimizce doğrulandı.',
+  'Ürünler hedeflenen resmi afet toplanma alanına ulaştırıldı.',
+  'Toplanma alanından dağıtım noktalarına hareket edildi.',
+  'Yardım afetzedelere başarıyla teslim edildi.'
+];
+
+function icon(name, stroke){
+  stroke = stroke || 'currentColor';
+  const s = `viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"`;
+  const M = {
+    water:`<svg ${s}><path d="M12 3c3.5 4 6 7.2 6 10.5A6 6 0 0 1 6 13.5C6 10.2 8.5 7 12 3Z"/></svg>`,
+    box:`<svg ${s}><path d="M4 8l8-4 8 4-8 4-8-4Z"/><path d="M4 8v9l8 4 8-4V8"/><path d="M12 12v9"/></svg>`,
+    food:`<svg ${s}><path d="M5 4v6a3 3 0 0 0 3 3v8M8 4v6M11 4v6"/><path d="M17 4c-1.7 0-3 2-3 4.5S15.3 12 17 12v9"/></svg>`,
+    tent:`<svg ${s}><path d="M3 19 12 5l9 14Z"/><path d="M12 5v14M8.5 19l3.5-6 3.5 6"/></svg>`,
+    blanket:`<svg ${s}><rect x="4" y="6" width="16" height="12" rx="1.5"/><path d="M4 10h16M4 14h16"/></svg>`,
+    hygiene:`<svg ${s}><path d="M10 3h4v2.5l1.5 2V20a1 1 0 0 1-1 1h-5a1 1 0 0 1-1-1V7.5L10 5.5Z"/></svg>`,
+    check:`<svg viewBox="0 0 24 24" fill="none" stroke="${stroke}" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7"/></svg>`,
+    dot:`<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="4" fill="${stroke}"/></svg>`,
+    empty:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><path d="M4 19c3-6 6 3 9-3s5-9 8-3" stroke-dasharray="2.6 3"/><circle cx="20" cy="6" r="1.6"/></svg>`,
+  };
+  return M[name] || '';
+}
+
+let state = { tab:'home', mapFilter:'all', selectedDistrict:'Güngören', selectedCat:null, theme:'dark' };
+const shipments = {
+  'NV-2026-4471': {code:'NV-2026-4471', category:'Kuru Gıda', amount:120, unit:'kg', district:'Esenler', point: 'Esenler 15 Temmuz Millet Bahçesi Toplanma Alanı', stage:3, times:genTimes(3)},
+  'NV-2026-1190': {code:'NV-2026-1190', category:'Çadır', amount:15, unit:'adet', district:'Güngören', point: 'Güngören Gençosman Safa Parkı Toplanma Alanı', stage:4, times:genTimes(4)},
+};
+function genTimes(stageIdx){
+  const base = Date.now() - (stageIdx+1)*5*3600*1000;
+  const t = [];
+  for(let i=0;i<=stageIdx;i++){ t.push(new Date(base + i*5*3600*1000)); }
+  return t;
+}
+function fmtTime(d){
+  return d.toLocaleDateString('tr-TR',{day:'2-digit',month:'2-digit'}) + ' · ' + d.toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit'});
+}
+
+function goTab(tab){
+  state.tab = tab;
+  document.querySelectorAll('.tab').forEach(el=>el.classList.remove('active'));
+  document.getElementById('tab-'+tab).classList.add('active');
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.toggle('active', b.dataset.tab===tab));
+  document.getElementById('app').scrollTop = 0;
+  if(tab==='map'){ setTimeout(initMap, 60); }
+}
+document.querySelectorAll('.nav-btn').forEach(b=> b.addEventListener('click', ()=>goTab(b.dataset.tab)));
+
+document.getElementById('themeToggle').addEventListener('click', ()=>{
+  state.theme = state.theme==='dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', state.theme);
+  document.getElementById('themeIcon').innerHTML = state.theme==='dark'
+    ? '<path d="M12 3v1M12 20v1M4.2 4.2l.7.7M19.1 19.1l.7.7M3 12h1M20 12h1M4.2 19.8l.7-.7M19.1 4.9l.7-.7"/><circle cx="12" cy="12" r="4.4"/>'
+    : '<path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5Z"/>';
+});
+
+function renderHomeDistricts(){
+  const top = [...districtScores].sort((a,b)=>b.oncelik_skoru-a.oncelik_skoru).slice(0,3);
+  document.getElementById('homeDistrictList').innerHTML = top.map((d,i)=>{
+    const info = TIER_INFO[d.tier];
+    return `<div class="district-mini" onclick="goTab('map'); selectDistrict('${d.ilce}')">
+      <div class="left">
+        <span class="rank-badge">0${i+1}</span>
+        <div><div class="name">${d.ilce}</div><div class="tier-tag">${info.label}</div></div>
+      </div>
+      <span class="score-chip" style="color:${info.color}; background:${info.bg};">${d.oncelik_skoru}</span>
+    </div>`;
+  }).join('');
+  document.getElementById('statCritical').textContent = districtScores.filter(d=>d.tier==='kritik').length;
+  document.getElementById('statAssembly').textContent = assemblyPoints.length;
+}
+
+let map, layerAssembly, layerFire, layerHealth, layerQuake;
+function colorIcon(color){
+  return L.divIcon({
+    className:'', html:`<div style="width:16px;height:16px;border-radius:50%;background:${color};border:2.5px solid rgba(255,255,255,.85);box-shadow:0 2px 6px rgba(0,0,0,.4);"></div>`,
+    iconSize:[16,16], iconAnchor:[8,8], popupAnchor:[0,-8]
+  });
+}
+function makeGroup(){
+  try{
+    if (window.L && L.markerClusterGroup) return L.markerClusterGroup({ maxClusterRadius: 45, disableClusteringAtZoom: 15 });
+  }catch(e){}
+  return L.layerGroup();
+}
+function initMap(){
+  if (map) { map.invalidateSize(); return; }
+  map = L.map('leaflet-map', {zoomControl:false, attributionControl:false}).setView([41.015,28.97], 10.3);
+  L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',{maxZoom:19}).addTo(map);
+  L.control.zoom({position:'bottomright'}).addTo(map);
+
+  layerAssembly = makeGroup();
+  assemblyPoints.forEach(s => L.marker([s.lat,s.lng],{icon:colorIcon('#E5A93D')}).bindPopup(
+    `<div class="popup-type" style="background:rgba(229,169,61,.18); color:#f3c36a;">Toplanma Alanı</div><div class="popup-title">${s.name}</div><div>${s.district} — Resmi Afet Toplanma Noktası</div>`
+  ).addTo(layerAssembly));
+
+  layerFire = makeGroup();
+  fireStations.forEach(s => L.marker([s.lat,s.lng],{icon:colorIcon('#4C8DC7')}).bindPopup(
+    `<div class="popup-type" style="background:rgba(76,141,199,.18); color:#7fb3e0;">İtfaiye Üssü</div><div class="popup-title">${s.name}</div><div>${s.district}</div>`
+  ).addTo(layerFire));
+
+  layerHealth = makeGroup();
+  healthFacilities.forEach(s => L.marker([s.lat,s.lng],{icon:colorIcon('#49AD7E')}).bindPopup(
+    `<div class="popup-type" style="background:rgba(73,173,126,.18); color:#7fd1a8;">Sağlık Tesisleri</div><div class="popup-title">${s.name}</div><div>${s.cat} — ${s.district}</div>`
+  ).addTo(layerHealth));
+
+  layerQuake = makeGroup();
+  quakeEvents.forEach(q => L.marker([q.lat,q.lng],{icon:colorIcon('#E2564B')}).bindPopup(
+    `<div class="popup-type" style="background:rgba(226,86,75,.18); color:#f0948c;">Mikro Deprem</div><div class="popup-title">${q.yer} — M${q.mag}</div><div>${q.time} · Derinlik ${q.depth} km</div>`
+  ).addTo(layerQuake));
+
+  layerAssembly.addTo(map); layerFire.addTo(map); layerHealth.addTo(map); layerQuake.addTo(map);
+}
+function applyFilter(f){
+  state.mapFilter = f;
+  document.querySelectorAll('.filter-chip').forEach(c=>c.classList.toggle('active', c.dataset.filter===f));
+  [layerAssembly,layerFire,layerHealth,layerQuake].forEach(l=> l && map.removeLayer(l));
+  if(f==='all'||f==='assembly') layerAssembly.addTo(map);
+  if(f==='all'||f==='fire') layerFire.addTo(map);
+  if(f==='all'||f==='health') layerHealth.addTo(map);
+  if(f==='all'||f==='quake') layerQuake.addTo(map);
+}
+document.getElementById('filterRow').addEventListener('click', e=>{
+  const chip = e.target.closest('.filter-chip');
+  if(chip) applyFilter(chip.dataset.filter);
+});
+
+function renderDistrictScroll(){
+  const sorted = [...districtScores].sort((a,b)=>b.oncelik_skoru-a.oncelik_skoru);
+  document.getElementById('districtScroll').innerHTML = sorted.map(d=>{
+    const info = TIER_INFO[d.tier];
+    return `<div class="district-pill ${d.ilce===state.selectedDistrict?'active':''}" onclick="selectDistrict('${d.ilce}')">
+      <div class="pname">${d.ilce}</div>
+      <div class="pscore" style="color:${info.color};">${d.oncelik_skoru} · ${info.label}</div>
+    </div>`;
+  }).join('');
+}
+function selectDistrict(id){
+  state.selectedDistrict = id;
+  renderDistrictScroll();
+  renderDistrictCard();
+}
+function renderDistrictCard(){
+  const d = districtScores.find(x=>x.ilce===state.selectedDistrict);
+  if(!d) return;
+  const info = TIER_INFO[d.tier];
+  const circ = 2*Math.PI*42;
+  const offset = circ - (d.oncelik_skoru/100)*circ;
+  document.getElementById('districtCard').innerHTML = `
+    <div class="gauge-wrap">
+      <div class="gauge">
+        <svg width="104" height="104" viewBox="0 0 104 104">
+          <circle cx="52" cy="52" r="42" fill="none" stroke="var(--bg-elev-3)" stroke-width="9"/>
+          <circle cx="52" cy="52" r="42" fill="none" stroke="${info.color}" stroke-width="9" stroke-linecap="round"
+            stroke-dasharray="${circ}" stroke-dashoffset="${offset}" style="transition:stroke-dashoffset .6s ease;"/>
+        </svg>
+        <div class="gauge-center"><div class="n">${d.oncelik_skoru}</div><div class="u">/ 100</div></div>
+      </div>
+      <div>
+        <div class="eyebrow">${d.ilce}</div>
+        <div class="badge" style="color:${info.color}; background:${info.bg};">${info.label} Öncelik</div>
+      </div>
+    </div>
+    <div class="metric-row">
+      <div class="metric">
+        <div class="mlbl">Riskli Yapı</div>
+        <div class="mval">%${d.risk_orani}</div>
+        <div class="bar"><i style="width:${d.risk_orani}%; background:var(--red);"></i></div>
+      </div>
+      <div class="metric">
+        <div class="mlbl">Sağlık Tesisi</div>
+        <div class="mval">${d.saglik_sayisi}</div>
+        <div class="bar"><i style="width:${Math.min(100,d.altyapi_kapasitesi)}%; background:var(--teal);"></i></div>
+      </div>
+      <div class="metric">
+        <div class="mlbl">İtfaiye</div>
+        <div class="mval">${d.itfaiye_sayisi}</div>
+        <div class="bar"><i style="width:${Math.min(100,d.altyapi_kapasitesi)}%; background:var(--blue);"></i></div>
+      </div>
+    </div>
+    <div class="reco" style="color:${info.color}; background:${info.bg};">${info.reco}</div>
+  `;
+}
+
+function renderCatGrid(){
+  document.getElementById('catGrid').innerHTML = categories.map(c=>
+    `<div class="cat-btn ${state.selectedCat===c.id?'active':''}" onclick="selectCat('${c.id}')">
+      ${icon(c.icon, state.selectedCat===c.id? 'var(--teal)':'currentColor')}
+      <span>${c.name}</span>
+    </div>`
+  ).join('');
+}
+function selectCat(id){
+  state.selectedCat = id;
+  renderCatGrid();
+  const c = categories.find(x=>x.id===id);
+  document.getElementById('unitBox').textContent = c.unit;
+  document.getElementById('errCat').classList.remove('show');
+}
+function populateSelects(){
+  const dsel = document.getElementById('districtSelect');
+  [...districtScores].sort((a,b)=>b.oncelik_skoru-a.oncelik_skoru).forEach(d=>{
+    const o = document.createElement('option');
+    o.value = d.ilce; o.textContent = `${d.ilce} — ${TIER_INFO[d.tier].label} (${d.oncelik_skoru})`;
+    dsel.appendChild(o);
+  });
+  const lsel = document.getElementById('logisticsSelect');
+  logisticsPoints.forEach(p=>{
+    const o = document.createElement('option');
+    o.value = p.name; o.textContent = `${p.name} (${p.district})`;
+    lsel.appendChild(o);
+  });
+}
+function genCode(){
+  let code;
+  do{ code = 'NV-2026-' + String(Math.floor(1000+Math.random()*9000)); }while(shipments[code]);
+  return code;
+}
+document.getElementById('submitDonation').addEventListener('click', ()=>{
+  let ok = true;
+  const amount = parseFloat(document.getElementById('amountInput').value);
+  const districtId = document.getElementById('districtSelect').value;
+  const point = document.getElementById('logisticsSelect').value;
+
+  document.getElementById('errCat').classList.toggle('show', !state.selectedCat); if(!state.selectedCat) ok=false;
+  document.getElementById('errAmount').classList.toggle('show', !(amount>0)); if(!(amount>0)) ok=false;
+  document.getElementById('errDistrict').classList.toggle('show', !districtId); if(!districtId) ok=false;
+  document.getElementById('errLogistics').classList.toggle('show', !point); if(!point) ok=false;
+  if(!ok) return;
+
+  const cat = categories.find(c=>c.id===state.selectedCat);
+  const code = genCode();
+  shipments[code] = {code, category:cat.name, amount, unit:cat.unit, district:districtId, point, stage:0, times:[new Date()]};
+
+  showToast(`Bağış başarıyla oluşturuldu: ${code}`);
+  state.selectedCat = null; renderCatGrid();
+  document.getElementById('amountInput').value='';
+  document.getElementById('unitBox').textContent='—';
+  document.getElementById('districtSelect').value='';
+  document.getElementById('logisticsSelect').value='';
+
+  goTab('track');
+  document.getElementById('trackInput').value = code;
+  renderTrack(code);
+});
+
+function tryCode(code){
+  document.getElementById('trackInput').value = code;
+  renderTrack(code);
+  goTab('track');
+}
+document.getElementById('trackGo').addEventListener('click', ()=>renderTrack(document.getElementById('trackInput').value.trim().toUpperCase()));
+document.getElementById('trackInput').addEventListener('keydown', e=>{ if(e.key==='Enter') renderTrack(e.target.value.trim().toUpperCase()); });
+
+function renderTrack(code){
+  const box = document.getElementById('trackResult');
+  const s = shipments[code];
+  if(!s){
+    box.innerHTML = `<div class="empty-state">${icon('empty')}<p>${code? 'Bu koda ait aktif sevkiyat bulunamadı.' : 'Takip kodunu girin veya örnek kodları deneyin.'}</p></div>`;
+    return;
+  }
+  const statusInfo = s.stage===4
+    ? {c:'var(--teal)', bg:'var(--teal-dim)', t:'Teslim Edildi'}
+    : {c:'var(--amber)', bg:'var(--amber-dim)', t:'Yolda / Sevk Ediliyor'};
+  box.innerHTML = `
+    <div class="track-result">
+      <div class="card">
+        <div class="track-head">
+          <div>
+            <div class="track-code">${s.code}</div>
+            <div class="track-sub">${s.category} · ${s.amount} ${s.unit} → ${s.district}</div>
+          </div>
+          <span class="status-pill" style="color:${statusInfo.c}; background:${statusInfo.bg};">${statusInfo.t}</span>
+        </div>
+        <div class="track-sub" style="margin-top:10px;">Hedef Toplanma/Teslim Noktası: <b>${s.point}</b></div>
+        <div class="timeline">
+          ${stages.map((label,i)=>{
+            const done = i < s.stage;
+            const current = i === s.stage;
+            const pending = i > s.stage;
+            const time = s.times[i] ? fmtTime(s.times[i]) : '—';
+            return `<div class="tl-item ${done?'done':current?'current':'pending'}">
+              ${i<stages.length-1?'<div class="tl-line"></div>':''}
+              <div class="tl-dot">${(done||current) ? icon('check','#fff') : icon('dot','var(--text-faint)')}</div>
+              <div>
+                <div class="tl-title">${label}</div>
+                <div class="tl-time">${pending? 'Bekliyor' : time}</div>
+                <div class="tl-desc">${stageDesc[i]}</div>
+              </div>
+            </div>`;
+          }).join('')}
+        </div>
+        ${s.stage<4 ? `<button class="sim-btn" onclick="advanceStage('${s.code}')">Gerçek Zamanlı İlerlemeyi Simüle Et →</button>` : ''}
+      </div>
+    </div>
+  `;
+}
+function advanceStage(code){
+  const s = shipments[code];
+  if(s.stage<4){ s.stage++; s.times[s.stage] = new Date(); }
+  renderTrack(code);
+}
+
+let toastTimer;
+function showToast(msg){
+  clearTimeout(toastTimer);
+  document.getElementById('toastMsg').textContent = msg;
+  const t = document.getElementById('toast');
+  t.classList.add('show');
+  toastTimer = setTimeout(()=>t.classList.remove('show'), 3200);
+}
+
+function tickClock(){
+  document.getElementById('clock').textContent = new Date().toLocaleTimeString('tr-TR',{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+}
+tickClock();
+setInterval(tickClock, 1000);
+
+renderHomeDistricts();
+renderDistrictScroll();
+renderDistrictCard();
+renderCatGrid();
+populateSelects();
+renderTrack('');
+</script>
 </body>
 </html>
